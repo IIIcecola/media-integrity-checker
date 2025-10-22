@@ -15,7 +15,7 @@ class MediaIntegrityChecker:
     def __init__(self, path: str = ".", recursive: bool = False, report_file: Optional[str] = None):
         """
         初始化检测工具
-        :param directory: 检测目标目录
+        :param path: 检测目标目录
         :param recursive: 是否递归检测子目录
         :param report_file: 报告保存路径（可选）
         """
@@ -164,7 +164,7 @@ class MediaIntegrityChecker:
         self.ok_count = 0
         
         for idx, file_path in enumerate(self.media_files, 1):
-            relative_path = os.path.relpath(file_path, self.directory)
+            relative_path = os.path.relpath(file_path, self.path)
             file_ext = os.path.splitext(file_path)[1].lower()
             
             print(f"[{idx}/{self.total_count}] 检测: {relative_path}")
@@ -198,7 +198,7 @@ class MediaIntegrityChecker:
             "=" * 80,
             "媒体文件完整性检测报告",
             "=" * 80,
-            f"检测目录: {self.directory}",
+            f"检测目录: {self.path}",
             f"扫描模式: {'递归扫描' if self.recursive else '当前目录'}",
             f"检测总数: {self.total_count} 个",
             f"正常文件: {self.ok_count} 个",
@@ -274,7 +274,7 @@ def main():
     try:
         # 创建并运行检测工具
         checker = MediaIntegrityChecker(
-            directory=args.path,
+            path=args.path,
             recursive=args.recursive,
             report_file=args.report
         )
