@@ -12,14 +12,14 @@ class MediaIntegrityChecker:
     SUPPORTED_IMAGES = ('.jpg', '.jpeg', '.png', '.gif', '.bmp')
     SUPPORTED_VIDEOS = ('.mp4', '.avi', '.mkv', '.mov', '.flv')
     
-    def __init__(self, directory: str = ".", recursive: bool = False, report_file: Optional[str] = None):
+    def __init__(self, path: str = ".", recursive: bool = False, report_file: Optional[str] = None):
         """
         初始化检测工具
         :param directory: 检测目标目录
         :param recursive: 是否递归检测子目录
         :param report_file: 报告保存路径（可选）
         """
-        self.directory = os.path.abspath(directory)
+        self.path = os.path.abspath(path)
         self.recursive = recursive
         self.report_file = report_file
         self.media_files: List[str] = []
@@ -27,21 +27,31 @@ class MediaIntegrityChecker:
         self.total_count = 0
         self.ok_count = 0
         self.error_count = 0
+        self.is_directory = os.path.isdir(self.path)
         
-        # 验证目录有效性
-        if not os.path.isdir(self.directory):
-            raise ValueError(f"目录 '{self.directory}' 不存在或不是有效目录")
+        # 验证路径有效性
+        if not os.path.exists(self.path):
+            raise ValueError(f"路径 '{self.path}' 不存在")
+        if not self.is_directory:
+            # 若为文件，检查是否为支持的媒体类型
+            file_ext = os.path.splitext(self.path)[1].lower()
+            if file_ext not in self.SUPPORTED_IMAGES and file_ext not in self.SUPPORTED_VIDEOS:
+                raise ValueError(f"文件 '{self.path}' 不是支持的媒体类型（图片/视频）")
     
     def scan_media_files(self) -> None:
-        """扫描目录中的媒体文件"""
-        self.media_files = []
-        for root, _, files in os.walk(self.directory):
-            for file in files:
-                file_ext = os.path.splitext(file)[1].lower()
-                if file_ext in self.SUPPORTED_IMAGES or file_ext in self.SUPPORTED_VIDEOS:
-                    self.media_files.append(os.path.join(root, file))
-            if not self.recursive:
-                break  # 非递归模式只扫描当前目录
+        """扫描目标路径中的媒体文件（支持单个文件或目录）"""
+        if self.is_directory:
+            # 目录模式：扫描目录下的媒体文件
+            for root, _, files in os.walk(self.path):
+                for file in files:
+                    file_ext = os.path.splitext(file)[1].lower()
+                    if file_ext in self.SUPPORTED_IMAGES or file_ext in self.SUPPORTED_VIDEOS:
+                        self.media_files.append(os.path.join(root, file))
+                if not self.recursive:
+                    break  # 非递归模式只扫描当前目录
+        else:
+            # 文件模式：直接添加单个文件
+            self.media_files.append(self.path)
         
         self.total_count = len(self.media_files)
     
@@ -215,7 +225,12 @@ class MediaIntegrityChecker:
     
     def run(self) -> None:
         """运行完整检测流程"""
-        print(f"正在扫描目录: {self.directory} {'(递归模式)' if self.recursive else ''}")
+        # 显示当前处理的是文件还是目录
+        if self.is_directory:
+            print(f"正在扫描目录: {self.path} {'(递归模式)' if self.recursive else ''}")
+        else:
+            print(f"正在检测文件: {self.path}")
+            
         self.scan_media_files()
         
         if not self.media_files:
@@ -251,15 +266,15 @@ def main():
     
     # 命令行参数配置
     parser = argparse.ArgumentParser(description="媒体文件完整性检测工具")
-    parser.add_argument("--dir", default=".", help="检测目标目录（默认当前目录）")
-    parser.add_argument("--recursive", action="store_true", help="递归检测子目录")
+    parser.add_argument("--path", default=".", help="检测目标路径（文件或目录，默认当前目录）")
+    parser.add_argument("--recursive", action="store_true", help="目录模式下递归检测子目录")
     parser.add_argument("--report", help="将检测结果保存到指定文件（可选）")
     args = parser.parse_args()
     
     try:
         # 创建并运行检测工具
         checker = MediaIntegrityChecker(
-            directory=args.dir,
+            directory=args.path,
             recursive=args.recursive,
             report_file=args.report
         )
